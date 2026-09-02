@@ -1,12 +1,12 @@
-#Cara Menggunakan Library
+## Cara Menggunakan Library
 
--- Panggil library (Ganti dengan loadstring jika di-host online, atau paste langsung)
+# Panggil library (Ganti dengan loadstring jika di-host online, atau paste langsung)
 local AlaricLib = -- [Masukkan script library di atas di sini atau loadstring]
 
--- Buat Jendela Utama
+# Buat Jendela Utama
 local Window = AlaricLib:CreateWindow("Alaric Hub")
 
--- Buat Tab 1: Menu Utama
+# Buat Tab 1: Menu Utama
 local Tab1 = Window:CreateTab("Utama")
 
 Tab1:CreateButton("Tekan Tombol", function()
@@ -29,7 +29,7 @@ Tab1:CreateDropdown("Pilih Senjata", {"Pedang", "Panah", "Tombak"}, function(sel
     print("Senjata dipilih:", selected)
 end)
 
--- Buat Tab 2: Pengaturan
+# Buat Tab 2: Pengaturan
 local Tab2 = Window:CreateTab("Pengaturan")
 Tab2:CreateButton("Reset Karakter", function()
     game.Players.LocalPlayer.Character:BreakJoints()
