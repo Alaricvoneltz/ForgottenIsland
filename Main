@@ -1,1 +1,497 @@
-loadstring(game:HttpGet("https://obfuscatorhub.vercel.app/api/rLBPz2QM"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Alaric Hub",
+    LoadingTitle = "Forgotten Island",
+    LoadingSubtitle = "by Alaric",
+    ConfigurationSaving = { Enabled = false },
+})
+
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local RunService = game:GetService("RunService")
+
+-- ==========================================
+-- 🗃️ TIER DATABASE (VFXAURA + DATABASE)
+-- ==========================================
+local TierDatabase = {
+    Mythic = {"mythic", "birdcharm", "boombox", "bungisbabychair", "cdplayer", "dvdplayer", "cellphone", "gemring", "lechon", "manangplushie", "starfish", "stickywings", "tapestrymaker", "trident"}, 
+    Legendary = {"legendary", "bffbeads", "cardboardwings", "filmstrip", "floppydisk", "graduationhat", "kapreplushie", "mananggtapestry", "mrislandguysash", "pacifier", "raissasroomsign", "shoulderpad", "stonestatue", "todolist", "yumyumbirdbucket"},
+    Epic = {"epic", "batibascandle", "cassettetape", "decoratedshell", "dogtohumanmeter", "dreamcatcher", "duwendeplushies", "duendeplushie", "halohalo", "jossneaker", "planeticket", "princemermahnplushie", "silversanddollarnecklace", "thewildpackbutton", "woodstatue"},
+    Rare = {"rare", "bungisbackpack", "calculatorwatch", "coconutdrink", "fancystick", "horseplushie", "lumpia", "princemermahnbeadcraft", "sandbottle", "tapestryroll", "vhs", "vinylearring", "yumyumbirdvisor"},
+    Uncommon = {"uncommon", "buckethat", "butterflyclip", "cowrieshell", "guitarpick", "lavalamp", "lipgloss", "nakalicharm", "princemermahnsnettop", "sunglasses", "yumyumbirdcup"},
+    Common = {"common", "basicstick", "bungisbandaids", "bungishat", "hairclip", "hopecharm", "princemermahnsnecklace", "raissasredglasses", "raissassneaker", "sodatab"} 
+}
+
+local function normalizeString(str)
+    return string.lower(string.gsub(str, "[%s%p]", ""))
+end
+
+-- Updated to support multiple selected tiers (table)
+local function isTarget(obj, selectedTiersTable)
+    for _, tier in ipairs(selectedTiersTable) do
+        local normTier = string.lower(tier)
+        
+        -- 1. VFXAura Detection
+        for _, desc in ipairs(obj:GetDescendants()) do
+            if string.find(string.lower(desc.Name), "vfxaura_") then
+                if string.find(string.lower(desc.Name), normTier) then
+                    return true, tier
+                end
+            end
+        end
+        
+        -- 2. Database Fallback Detection
+        local normName = normalizeString(obj.Name)
+        if string.find(normName, normTier) then return true, tier end
+        
+        local keywords = TierDatabase[tier] or {}
+        for _, keyword in ipairs(keywords) do
+            if string.find(normName, keyword) then
+                return true, tier
+            end
+        end
+    end
+    
+    return false, nil
+end
+
+local function getTopLevelMemory(prompt)
+    local current = prompt.Parent
+    local topLevel = nil
+    while current and current.Name ~= "SpawnedMemories" and current ~= workspace do
+        topLevel = current
+        current = current.Parent
+    end
+    return topLevel
+end
+
+local tierList = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"}
+
+-- ==========================================
+-- TAB 1: MAIN
+-- ==========================================
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+local autoWing = false
+MainTab:CreateToggle({
+    Name = "Instant UGC Wings (Loop TP)",
+    CurrentValue = false,
+    Callback = function(Value)
+        autoWing = Value
+        task.spawn(function()
+            while autoWing do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        char:PivotTo(CFrame.new(Vector3.new(4043.19140625, 350.1332702636719, 3201.703125)))
+                    end
+                end)
+                task.wait(0.1)
+            end
+        end)
+    end,
+})
+
+MainTab:CreateButton({
+    Name = "TP SpawnLocation",
+    Callback = function()
+        pcall(function()
+            local spawnLoc = workspace:FindFirstChild("SpawnLocation")
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if spawnLoc and hrp then
+                hrp.CFrame = spawnLoc.CFrame + Vector3.new(0, 3, 0)
+            end
+        end)
+    end,
+})
+
+MainTab:CreateButton({
+    Name = "TP Base",
+    Callback = function()
+        pcall(function()
+            local playerBases = workspace:FindFirstChild("PlayerBases")
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if playerBases and hrp then
+                local myBaseName = "PBaseV2_Base_" .. LocalPlayer.Name
+                local myBase = playerBases:FindFirstChild(myBaseName)
+                
+                if myBase then
+                    local floor0 = myBase:FindFirstChild("Floor0_PBaseV2_Base")
+                    if floor0 then
+                        local floor = floor0:FindFirstChild("Floor")
+                        local targetPart = floor and floor:FindFirstChild("003")
+                        
+                        if not targetPart then targetPart = floor0:FindFirstChildWhichIsA("BasePart", true) end
+                        
+                        if targetPart then
+                            hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                            Rayfield:Notify({Title = "Teleport", Content = "Successfully teleported to base!", Duration = 2})
+                        end
+                    end
+                else
+                    Rayfield:Notify({Title = "Teleport", Content = "Your base hasn't loaded yet!", Duration = 2})
+                end
+            end
+        end)
+    end,
+})
+
+MainTab:CreateSection("Memories & Items")
+
+local espFolder = Instance.new("Folder")
+espFolder.Name = "TierESP_Folder"
+espFolder.Parent = game:GetService("CoreGui")
+
+local selectedESPTiers = {"Mythic"}
+local espTierToggle = false
+
+MainTab:CreateToggle({
+    Name = "ESP Memory",
+    CurrentValue = false,
+    Callback = function(Value)
+        espTierToggle = Value
+        if not espTierToggle then espFolder:ClearAllChildren() end
+
+        task.spawn(function()
+            while espTierToggle do
+                pcall(function()
+                    espFolder:ClearAllChildren()
+                    local spawnedMemories = workspace:FindFirstChild("SpawnedMemories")
+                    
+                    if spawnedMemories then
+                        for _, v in ipairs(spawnedMemories:GetChildren()) do
+                            local isMatched, foundTier = isTarget(v, selectedESPTiers)
+                            if isMatched then
+                                local targetPart = v:IsA("Model") and v.PrimaryPart or v:FindFirstChildWhichIsA("BasePart", true) or v
+                                
+                                if targetPart and targetPart:IsA("BasePart") then
+                                    local highlight = Instance.new("Highlight")
+                                    highlight.Adornee = v
+                                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                                    highlight.Parent = espFolder
+
+                                    local billboard = Instance.new("BillboardGui")
+                                    billboard.Adornee = targetPart
+                                    billboard.Size = UDim2.new(0, 150, 0, 50)
+                                    billboard.StudsOffset = Vector3.new(0, 4, 0)
+                                    billboard.AlwaysOnTop = true
+                                    billboard.Parent = espFolder
+
+                                    local text = Instance.new("TextLabel")
+                                    text.Parent = billboard
+                                    text.BackgroundTransparency = 1
+                                    text.Size = UDim2.new(1, 0, 1, 0)
+                                    text.Text = "[" .. string.upper(foundTier) .. "] " .. v.Name
+                                    text.TextColor3 = Color3.fromRGB(255, 50, 50)
+                                    text.TextStrokeTransparency = 0
+                                    text.TextScaled = true
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(2)
+            end
+        end)
+    end,
+})
+
+MainTab:CreateDropdown({
+    Name = "ESP Tiers",
+    Options = tierList,
+    CurrentOption = {"Mythic"},
+    MultipleOptions = true,
+    Flag = "ESPDropdown",
+    Callback = function(Options)
+        selectedESPTiers = Options
+    end,
+})
+
+local selectedCollectTiers = {"Mythic"}
+local autoCollectSpecific = false
+local lastNotify = 0
+
+MainTab:CreateToggle({
+    Name = "Auto Collect Memory",
+    CurrentValue = false,
+    Callback = function(Value)
+        autoCollectSpecific = Value
+        task.spawn(function()
+            while autoCollectSpecific do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    local spawnedMemories = workspace:FindFirstChild("SpawnedMemories")
+                    local spawnLoc = workspace:FindFirstChild("SpawnLocation")
+                    local foundItem = false
+                    
+                    if hrp and spawnedMemories and spawnLoc then
+                        for _, prompt in ipairs(spawnedMemories:GetDescendants()) do
+                            if not autoCollectSpecific then break end
+                            
+                            if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                                local topLevelMemory = getTopLevelMemory(prompt)
+                                
+                                if topLevelMemory then
+                                    local isMatched, _ = isTarget(topLevelMemory, selectedCollectTiers)
+                                    if isMatched then
+                                        local targetPart = prompt.Parent
+                                        if targetPart and targetPart:IsA("BasePart") then
+                                            prompt.RequiresLineOfSight = false
+                                            prompt.MaxActivationDistance = 9e9
+                                            prompt.HoldDuration = 0
+                                            
+                                            hrp.CFrame = targetPart.CFrame + Vector3.new(0, 1.5, 0)
+                                            task.wait(0.3) 
+                                            
+                                            for i = 1, 3 do
+                                                if prompt and prompt.Parent then
+                                                    fireproximityprompt(prompt)
+                                                    task.wait(0.15)
+                                                end
+                                            end
+                                            
+                                            foundItem = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if foundItem then
+                            hrp.CFrame = spawnLoc.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.5)
+                        end
+                    end
+                    
+                    if not foundItem and autoCollectSpecific then
+                        if tick() - lastNotify > 5 then
+                            local joinedTiers = table.concat(selectedCollectTiers, ", ")
+                            Rayfield:Notify({
+                                Title = "Item Not Found",
+                                Content = "Not found (" .. joinedTiers .. ")",
+                                Duration = 2,
+                                Image = 4483362458,
+                            })
+                            lastNotify = tick()
+                        end
+                    end
+                    
+                end)
+                task.wait(1)
+            end
+        end)
+    end,
+})
+
+MainTab:CreateDropdown({
+    Name = "Collect Tiers",
+    Options = tierList,
+    CurrentOption = {"Mythic"},
+    MultipleOptions = true,
+    Flag = "CollectDropdown",
+    Callback = function(Options)
+        selectedCollectTiers = Options
+    end,
+})
+
+-- ==========================================
+-- TAB 2: SELL ALL & FRAGMENT
+-- ==========================================
+local FragmentTab = Window:CreateTab("Sell All & Fragment", 4483362458)
+
+local autoFragment = false
+local fragmentDelay = 0.5
+
+FragmentTab:CreateToggle({
+    Name = "Auto Collect Fragment",
+    CurrentValue = false,
+    Callback = function(Value)
+        autoFragment = Value
+        task.spawn(function()
+            while autoFragment do
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    local playerBases = workspace:FindFirstChild("PlayerBases")
+                    
+                    if hrp and playerBases then
+                        local myBaseName = "PBaseV2_Base_" .. LocalPlayer.Name
+                        local myBase = playerBases:FindFirstChild(myBaseName)
+                        if myBase then
+                            local floor = myBase:FindFirstChild("Floor0_PBaseV2_Base")
+                            local slots = floor and floor:FindFirstChild("Slots")
+                            if slots then
+                                for _, slot in ipairs(slots:GetChildren()) do
+                                    local claimPart = slot:FindFirstChild("Claim")
+                                    if claimPart and claimPart:IsA("BasePart") then
+                                        firetouchinterest(hrp, claimPart, 0)
+                                        task.wait(0.01)
+                                        firetouchinterest(hrp, claimPart, 1)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(fragmentDelay)
+            end
+        end)
+    end,
+})
+
+FragmentTab:CreateInput({
+    Name = "Delay Fragment (Seconds)",
+    CurrentValue = "0.5",
+    PlaceholderText = "Example: 0.5",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then fragmentDelay = num end
+    end,
+})
+
+FragmentTab:CreateSection("Sell Options")
+
+local autoSell = false
+local sellDelay = 2
+local hasConfirmedSell = false
+local SellToggle
+
+SellToggle = FragmentTab:CreateToggle({
+    Name = "Auto Sell All",
+    CurrentValue = false,
+    Callback = function(Value)
+        -- Sistem Konfirmasi agar aman
+        if Value and not hasConfirmedSell then
+            hasConfirmedSell = true
+            Rayfield:Notify({
+                Title = "⚠️ WARNING",
+                Content = "This will SELL ALL memories in your inventory! Turn it on again to confirm.",
+                Duration = 5,
+                Image = 4483362458,
+            })
+            task.defer(function()
+                SellToggle:Set(false)
+            end)
+            return
+        end
+
+        autoSell = Value
+        if autoSell then
+            task.spawn(function()
+                while autoSell do
+                    pcall(function()
+                        local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+                        if remotes then
+                            local sellEvent = remotes:FindFirstChild("Memories::SellAllEvent")
+                            if sellEvent then sellEvent:FireServer() end
+                        end
+                    end)
+                    task.wait(sellDelay)
+                end
+            end)
+        end
+    end,
+})
+
+FragmentTab:CreateInput({
+    Name = "Delay Sell All (Seconds)",
+    CurrentValue = "2",
+    PlaceholderText = "Example: 2",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then sellDelay = num end
+    end,
+})
+
+-- ==========================================
+-- TAB 3: PLAYER
+-- ==========================================
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+
+local CFspeed = 1
+local CFloop = nil
+local flying = false
+local flyBV = nil
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    
+    if not humanoid or not hrp then return end
+
+    if flyBV then flyBV:Destroy() end
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBV.Velocity = Vector3.new(0, 0, 0)
+    flyBV.Name = "AntiGravityFly"
+    flyBV.Parent = hrp
+
+    humanoid.PlatformStand = true
+
+    if CFloop then CFloop:Disconnect() end
+
+    CFloop = RunService.Heartbeat:Connect(function(deltaTime)
+        local moveDirection = humanoid.MoveDirection * (CFspeed * deltaTime * 60)
+        local camera = workspace.CurrentCamera
+        local cameraCFrame = camera.CFrame
+        local cameraOffset = hrp.CFrame:ToObjectSpace(cameraCFrame).Position
+        
+        cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
+        local cameraPosition = cameraCFrame.Position
+        local hrpPosition = hrp.CFrame.Position
+
+        local objectSpaceVelocity = CFrame.new(cameraPosition, Vector3.new(hrpPosition.X, cameraPosition.Y, hrpPosition.Z)):VectorToObjectSpace(moveDirection)
+
+        hrp.CFrame = CFrame.new(hrpPosition) * (cameraCFrame - cameraPosition) * CFrame.new(objectSpaceVelocity)
+    end)
+end
+
+local function stopFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+    if CFloop then CFloop:Disconnect() end
+    if flyBV then flyBV:Destroy() flyBV = nil end
+    if humanoid then humanoid.PlatformStand = false end
+end
+
+PlayerTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+    Callback = function(Value)
+        flying = Value
+        if flying then
+            startFly()
+        else
+            stopFly()
+        end
+    end,
+})
+
+PlayerTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {1, 100},
+    Increment = 1,
+    Suffix = " Speed",
+    CurrentValue = 1,
+    Flag = "CFrameFlySpeed",
+    Callback = function(Value)
+        CFspeed = Value
+    end,
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if flying then
+        startFly()
+    end
+end)
